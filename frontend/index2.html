@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Story Adventure - Frontend tích hợp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Uncial+Antiqua&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07080b;
+      --bg2: #0b0c10;
+      --panel: #0f1014;
+      --panel2: #13151a;
+      --panel3: #171922;
+      --border: #1e2028;
+      --border2: #272b35;
+      --text: #ddd5be;
+      --text2: #b8ad96;
+      --muted: #6b6455;
+      --gold: #c8a24a;
+      --gold2: #9e7828;
+      --gold3: rgba(200,162,74,0.18);
+      --red: #a03030;
+      --red2: #cc4444;
+      --green: #3f8f53;
+      --blue: #4f78c8;
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'IM Fell English', Georgia, serif;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+      opacity: .28;
+    }
+
+    #canvas { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
+
+    #app {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(360px, .9fr);
+      grid-template-rows: auto 1fr auto;
+      height: 100vh;
+    }
+
+    header {
+      grid-column: 1 / 3;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 24px;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border2);
+      background: linear-gradient(180deg, rgba(200,162,74,.06), transparent);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .seal {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      border: 1.5px solid var(--gold2);
+      color: var(--gold);
+      background: radial-gradient(circle at 40% 35%, rgba(200,162,74,.18), transparent 65%);
+      box-shadow: 0 0 0 3px rgba(200,162,74,.06), 0 0 20px rgba(200,162,74,.14);
+      font-size: 20px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-family: 'Uncial Antiqua', serif;
+      color: var(--gold);
+      font-size: 19px;
+      letter-spacing: .06em;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-family: 'Libre Baskerville', serif;
+      font-size: 10px;
+      letter-spacing: .24em;
+      text-transform: uppercase;
+    }
+
+    .header-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    button, select, input, textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      transition: .18s ease;
+    }
+
+    button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .gold-btn {
+      padding: 10px 16px;
+      background: linear-gradient(160deg, #a07020, #c8a24a, #9e6e18);
+      color: #0b0905;
+      font-family: 'Libre Baskerville', serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      box-shadow: 0 2px 16px rgba(200,162,74,.22), inset 0 1px 0 rgba(255,255,255,.14);
+    }
+    .gold-btn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+
+    .ghost-btn {
+      padding: 10px 14px;
+      background: var(--panel2);
+      color: var(--text2);
+      border: 1px solid var(--border2);
+    }
+    .ghost-btn:hover:not(:disabled) { border-color: var(--gold2); color: var(--text); }
+
+    .danger-btn {
+      padding: 10px 14px;
+      background: rgba(160,48,48,.14);
+      color: #efb6b6;
+      border: 1px solid rgba(160,48,48,.35);
+    }
+    .danger-btn:hover:not(:disabled) { background: rgba(160,48,48,.22); }
+
+    .main {
+      grid-column: 1;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-width: 0;
+      border-right: 1px solid var(--border);
+    }
+
+    .top-panels {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 14px;
+      padding: 14px 18px 0;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,.01), transparent), var(--panel);
+      border: 1px solid var(--border2);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(90deg, rgba(200,162,74,.08), transparent);
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Uncial Antiqua', serif;
+      color: var(--gold);
+      font-size: 13px;
+      letter-spacing: .04em;
+    }
+
+    .panel-body { padding: 14px; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-family: 'Libre Baskerville', serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 11px 12px;
+      background: var(--panel2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      border-radius: 8px;
+      outline: none;
+    }
+
+    .field textarea {
+      min-height: 72px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--gold2);
+      box-shadow: 0 0 0 3px rgba(200,162,74,.08);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .status-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      border: 1px solid var(--border2);
+      border-radius: 999px;
+      background: var(--panel2);
+      color: var(--text2);
+      font-size: 13px;
+    }
+
+    .chip strong { color: var(--gold); }
+
+    #logWrap {
+      position: relative;
+      overflow: hidden;
+      margin: 14px 18px;
+      border: 1px solid var(--border2);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,.01), transparent), rgba(8,9,12,.88);
+      min-height: 0;
+    }
+
+    #log {
+      height: 100%;
+      overflow-y: auto;
+      padding: 26px 28px 20px;
+      scroll-behavior: smooth;
+    }
+
+    #log::-webkit-scrollbar, #rightCol::-webkit-scrollbar { width: 6px; }
+    #log::-webkit-scrollbar-thumb, #rightCol::-webkit-scrollbar-thumb {
+      background: var(--border2);
+      border-radius: 999px;
+    }
+
+    .empty-screen {
+      min-height: 100%;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--muted);
+      opacity: .58;
+      gap: 10px;
+    }
+
+    .empty-screen .glyph {
+      font-family: 'Uncial Antiqua', serif;
+      font-size: 60px;
+      color: var(--gold2);
+      text-shadow: 0 0 30px rgba(200,162,74,.22);
+    }
+
+    .system-log {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 6px 0 18px;
+      color: var(--muted);
+      font-family: 'Libre Baskerville', serif;
+      font-size: 10px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .system-log::before, .system-log::after {
+      content: '';
+      height: 1px;
+      flex: 1;
+      background: linear-gradient(90deg, transparent, var(--border2), transparent);
+    }
+
+    .player-bubble-wrap {
+      display: flex;
+      justify-content: flex-end;
+      margin: 16px 0 8px;
+    }
+
+    .player-bubble {
+      max-width: 72%;
+      padding: 12px 16px;
+      border-radius: 12px 12px 4px 12px;
+      background: linear-gradient(135deg, rgba(200,162,74,.12), rgba(200,162,74,.05));
+      border: 1px solid rgba(200,162,74,.24);
+      color: var(--text2);
+      line-height: 1.55;
+      box-shadow: 0 6px 18px rgba(0,0,0,.16);
+    }
+
+    .turn-card {
+      margin: 10px 0 26px;
+      animation: fadeUp .35s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .turn-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .turn-num {
+      color: var(--gold2);
+      font-family: 'Libre Baskerville', serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .24em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    .turn-divider {
+      height: 1px;
+      flex: 1;
+      background: linear-gradient(90deg, var(--border2), transparent);
+    }
+
+    .turn-story {
+      white-space: pre-wrap;
+      font-size: 18px;
+      line-height: 1.85;
+      color: var(--text);
+      letter-spacing: .01em;
+    }
+
+    .drop-cap {
+      float: left;
+      font-family: 'Uncial Antiqua', serif;
+      font-size: 54px;
+      line-height: .82;
+      color: var(--gold);
+      margin-right: 6px;
+      margin-top: 4px;
+      text-shadow: 0 0 20px rgba(200,162,74,.35), 2px 2px 0 rgba(0,0,0,.8);
+    }
+
+    .turn-story.typing::after {
+      content: '▍';
+      animation: blink .65s step-end infinite;
+      color: var(--gold);
+      font-size: 13px;
+      vertical-align: middle;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .state-change-box {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border: 1px solid rgba(79,120,200,.26);
+      background: rgba(79,120,200,.08);
+      border-radius: 10px;
+    }
+
+    .mini-title {
+      color: #a9c0f3;
+      font-family: 'Libre Baskerville', serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .simple-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .simple-list .item,
+    .list-row {
+      padding: 9px 11px;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text2);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .choices-section { margin-top: 18px; }
+
+    .choices-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      color: var(--gold2);
+      font-family: 'Libre Baskerville', serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .3em;
+      text-transform: uppercase;
+    }
+    .choices-label::after {
+      content: '';
+      height: 1px;
+      flex: 1;
+      background: linear-gradient(90deg, var(--border2), transparent);
+    }
+
+    .turn-choices { display: flex; flex-direction: column; gap: 8px; }
+
+    .choice-btn {
+      width: 100%;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      text-align: left;
+      background: var(--panel);
+      color: var(--text2);
+      border: 1px solid var(--border2);
+      border-left: 2px solid transparent;
+      border-radius: 8px;
+    }
+    .choice-btn:hover {
+      transform: translateX(4px);
+      color: var(--text);
+      background: rgba(200,162,74,.07);
+      border-color: rgba(200,162,74,.28);
+      border-left-color: var(--gold2);
+    }
+
+    .choice-num {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--gold2);
+      min-width: 16px;
+      padding-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .bottom-bar {
+      margin: 0 18px 18px;
+      padding: 14px;
+      border: 1px solid var(--border2);
+      border-radius: 14px;
+      background: linear-gradient(0deg, rgba(200,162,74,.03), transparent), var(--panel);
+    }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: 190px 1fr 140px;
+      gap: 10px;
+      align-items: end;
+    }
+
+    #rightCol {
+      grid-column: 2;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      background: var(--bg2);
+    }
+
+    .stat-block { display: flex; flex-direction: column; gap: 12px; }
+
+    .hp-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .small-label {
+      color: var(--muted);
+      font-family: 'Libre Baskerville', serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .hp-value { color: #efb6b6; font-family: 'Libre Baskerville', serif; font-size: 11px; font-weight: 700; }
+
+    .bar-bg {
+      height: 6px;
+      border-radius: 999px;
+      background: var(--border2);
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--red), var(--red2));
+      border-radius: inherit;
+      transition: width .45s ease;
+      box-shadow: 0 0 8px rgba(160,48,48,.4);
+    }
+
+    .kv-list { display: flex; flex-direction: column; gap: 8px; }
+    .kv-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+      padding-bottom: 7px;
+      border-bottom: 1px solid var(--border);
+    }
+    .kv-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .kv-key {
+      color: var(--muted);
+      font-family: 'Libre Baskerville', serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .kv-value {
+      text-align: right;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: var(--panel2);
+      border: 1px solid var(--border2);
+      color: var(--text2);
+      font-size: 13px;
+      line-height: 1.3;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      color: var(--muted);
+      word-break: break-all;
+    }
+
+    .loading-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      padding: 16px 0;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border2);
+      border-top-color: var(--gold2);
+      animation: spin .8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 10;
+      max-width: 380px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border2);
+      background: rgba(15,16,20,.96);
+      box-shadow: var(--shadow);
+      color: var(--text);
+      line-height: 1.55;
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: .25s ease;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.error { border-color: rgba(160,48,48,.35); color: #f0c2c2; }
+    .toast.success { border-color: rgba(63,143,83,.35); color: #c4e4cc; }
+
+    details summary {
+      cursor: pointer;
+      color: var(--text2);
+      font-family: 'Libre Baskerville', serif;
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 1200px) {
+      #app { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr auto; }
+      header { grid-column: 1; }
+      .main { grid-column: 1; border-right: none; }
+      #rightCol { grid-column: 1; max-height: 46vh; border-top: 1px solid var(--border); }
+    }
+
+    @media (max-width: 860px) {
+      .top-panels { grid-template-columns: 1fr; }
+      .action-grid { grid-template-columns: 1fr; }
+      .grid-2 { grid-template-columns: 1fr; }
+      header { flex-direction: column; align-items: stretch; }
+      .header-right { justify-content: stretch; }
+      .header-right > * { width: 100%; }
+      .player-bubble { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <div id="app">
+    <header>
+      <div class="brand">
+        <div class="seal">⚔</div>
+        <div>
+          <h1>Hành Trình Huyền Thoại</h1>
+          <p>Frontend tích hợp AI Story Adventure</p>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <button id="refreshBtn" class="ghost-btn" type="button">Làm mới trạng thái</button>
+        <button id="debugBtn" class="ghost-btn" type="button">Tải debug state</button>
+        <button id="deleteBtn" class="danger-btn" type="button">Xóa phiên</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="top-panels">
+        <section class="panel">
+          <div class="panel-head">
+            <div class="panel-title">🜂 Tạo phiên chơi mới</div>
+          </div>
+          <div class="panel-body">
+            <div class="grid-2">
+              <div class="field">
+                <label for="worldSelect">Thế giới</label>
+                <select id="worldSelect"></select>
+              </div>
+              <div class="field">
+                <label for="playerNameInput">Tên nhân vật</label>
+                <input id="playerNameInput" placeholder="Ví dụ: Kha, Lyra, Thắng..." autocomplete="off" />
+              </div>
+              <div class="field">
+                <label for="backgroundInput">Xuất thân</label>
+                <input id="backgroundInput" value="kẻ lang thang mất ký ức" />
+              </div>
+              <div class="field">
+                <label for="goalsInput">Mục tiêu</label>
+                <input id="goalsInput" value="tìm lại quá khứ" placeholder="Phân tách bằng dấu phẩy" />
+              </div>
+              <div class="field">
+                <label for="traitsInput">Tính cách</label>
+                <input id="traitsInput" value="đa nghi, gan lì" placeholder="Phân tách bằng dấu phẩy" />
+              </div>
+              <div class="field">
+                <label for="virtuesInput">Phẩm chất</label>
+                <input id="virtuesInput" value="trung thành" placeholder="Phân tách bằng dấu phẩy" />
+              </div>
+              <div class="field">
+                <label for="flawsInput">Khuyết điểm</label>
+                <input id="flawsInput" value="nóng nảy" placeholder="Phân tách bằng dấu phẩy" />
+              </div>
+              <div class="field">
+                <label for="fearsInput">Nỗi sợ</label>
+                <input id="fearsInput" value="bị kiểm soát" placeholder="Phân tách bằng dấu phẩy" />
+              </div>
+            </div>
+            <div class="status-row">
+              <button id="startBtn" class="gold-btn" type="button">✦ Bắt đầu phiên mới</button>
+              <button id="restoreBtn" class="ghost-btn" type="button">Khôi phục phiên đang lưu</button>
+            </div>
+            <p class="hint" style="margin-top:12px;">
+              Form này map đúng sang request của <code>/game/start</code>: world, tên, xuất thân, traits, virtues, flaws, fears, goals.
+            </p>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div class="panel-title">✧ Trạng thái phiên hiện tại</div>
+          </div>
+          <div class="panel-body">
+            <div class="status-row" id="sessionChips">
+              <div class="chip"><strong>Chưa có phiên</strong></div>
+            </div>
+            <details style="margin-top:12px;" open>
+              <summary>Ghi chú sử dụng</summary>
+              <div class="simple-list">
+                <div class="item">Chọn loại hành động trước khi gửi: <strong>explore</strong>, <strong>talk</strong>, <strong>take_item</strong>, <strong>use_item</strong>, <strong>attack</strong>.</div>
+                <div class="item">Mỗi lượt sẽ hiển thị narrative, choice, và cả <strong>state_changes</strong> trả về từ backend.</div>
+                <div class="item">Nút <strong>Tải debug state</strong> sẽ gọi <code>/debug/state/{session_id}</code> để hiện inventory, quest, NPC, event, memory.</div>
+              </div>
+            </details>
+          </div>
+        </section>
+      </section>
+
+      <section id="logWrap">
+        <div id="log">
+          <div class="empty-screen" id="emptyScreen">
+            <div>
+              <div class="glyph">⚜</div>
+              <div>Hãy tạo hoặc khôi phục một phiên chơi để bắt đầu phiêu lưu.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="bottom-bar">
+        <div class="action-grid">
+          <div class="field">
+            <label for="actionTypeSelect">Loại hành động</label>
+            <select id="actionTypeSelect">
+              <option value="talk">talk</option>
+              <option value="explore">explore</option>
+              <option value="take_item">take_item</option>
+              <option value="use_item">use_item</option>
+              <option value="attack">attack</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="actionInput">Nội dung hành động</label>
+            <input id="actionInput" placeholder="Ví dụ: hỏi lão gác cổng về tòa tháp đổ nát..." autocomplete="off" />
+          </div>
+
+          <button id="sendBtn" class="gold-btn" type="button">Gửi hành động ❯</button>
+        </div>
+      </section>
+    </main>
+
+    <aside id="rightCol">
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title">🛡 Trạng thái nhân vật</div>
+        </div>
+        <div class="panel-body" id="playerStatePanel">
+          <div class="hint">Chưa có dữ liệu nhân vật.</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title">🗺 Thế giới hiện tại</div>
+        </div>
+        <div class="panel-body" id="worldStatePanel">
+          <div class="hint">Chưa có dữ liệu thế giới.</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title">📜 Nhiệm vụ động</div>
+        </div>
+        <div class="panel-body" id="questsPanel">
+          <div class="hint">Chưa có nhiệm vụ nào được nạp.</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title">👤 NPC đã biết</div>
+        </div>
+        <div class="panel-body" id="npcsPanel">
+          <div class="hint">Chưa có NPC nào được nạp.</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title">🎒 Hành trang</div>
+        </div>
+        <div class="panel-body" id="inventoryPanel">
+          <div class="hint">Chưa có dữ liệu inventory.</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title">⚠ Sự kiện / khám phá</div>
+        </div>
+        <div class="panel-body" id="eventsPanel">
+          <div class="hint">Chưa có sự kiện nào được nạp.</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title">🧠 Bộ nhớ truyện</div>
+        </div>
+        <div class="panel-body" id="memoryPanel">
+          <div class="hint">Chưa có dữ liệu memory.</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title">🔮 Thông tin phiên / debug</div>
+        </div>
+        <div class="panel-body" id="sessionPanel">
+          <div class="hint">Phiên sẽ hiện ở đây sau khi start hoặc restore.</div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    (function () {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      let W = 0, H = 0, particles = [];
+      function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+      function makeParticle() {
+        return {
+          x: Math.random() * (W || 800),
+          y: Math.random() * (H || 600),
+          r: Math.random() * 1 + .2,
+          speed: Math.random() * .18 + .04,
+          alpha: Math.random() * .2 + .04,
+          drift: (Math.random() - .5) * .25,
+          wobble: Math.random() * Math.PI * 2,
+          wobbleSpeed: Math.random() * .015 + .005,
+        };
+      }
+      function resetParticle(p) {
+        p.x = Math.random() * W;
+        p.y = H + 4;
+        p.r = Math.random() * 1 + .2;
+        p.speed = Math.random() * .18 + .04;
+        p.alpha = Math.random() * .2 + .04;
+        p.drift = (Math.random() - .5) * .25;
+      }
+      function init() {
+        resize();
+        particles = Array.from({ length: 70 }, makeParticle);
+      }
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+        for (const p of particles) {
+          p.wobble += p.wobbleSpeed;
+          ctx.beginPath();
+          ctx.arc(p.x + Math.sin(p.wobble) * .8, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(200,162,74,${p.alpha})`;
+          ctx.fill();
+          p.y -= p.speed;
+          p.x += p.drift;
+          if (p.y < -4) resetParticle(p);
+          if (p.x < -4 || p.x > W + 4) p.x = Math.random() * W;
+        }
+        requestAnimationFrame(draw);
+      }
+      window.addEventListener('resize', resize);
+      init(); draw();
+    })();
+
+    const API = localStorage.getItem('storyApiBase') || 'http://127.0.0.1:8000';
+
+    let sessionId = sessionStorage.getItem('sessionId') || null;
+    let isStartingGame = false;
+    let isSendingAction = false;
+    let turnCounter = 0;
+    let lastDebugState = null;
+
+    const els = {
+      worldSelect: document.getElementById('worldSelect'),
+      playerNameInput: document.getElementById('playerNameInput'),
+      backgroundInput: document.getElementById('backgroundInput'),
+      traitsInput: document.getElementById('traitsInput'),
+      virtuesInput: document.getElementById('virtuesInput'),
+      flawsInput: document.getElementById('flawsInput'),
+      fearsInput: document.getElementById('fearsInput'),
+      goalsInput: document.getElementById('goalsInput'),
+      startBtn: document.getElementById('startBtn'),
+      restoreBtn: document.getElementById('restoreBtn'),
+      refreshBtn: document.getElementById('refreshBtn'),
+      debugBtn: document.getElementById('debugBtn'),
+      deleteBtn: document.getElementById('deleteBtn'),
+      actionTypeSelect: document.getElementById('actionTypeSelect'),
+      actionInput: document.getElementById('actionInput'),
+      sendBtn: document.getElementById('sendBtn'),
+      log: document.getElementById('log'),
+      emptyScreen: document.getElementById('emptyScreen'),
+      sessionChips: document.getElementById('sessionChips'),
+      playerStatePanel: document.getElementById('playerStatePanel'),
+      worldStatePanel: document.getElementById('worldStatePanel'),
+      questsPanel: document.getElementById('questsPanel'),
+      npcsPanel: document.getElementById('npcsPanel'),
+      inventoryPanel: document.getElementById('inventoryPanel'),
+      eventsPanel: document.getElementById('eventsPanel'),
+      memoryPanel: document.getElementById('memoryPanel'),
+      sessionPanel: document.getElementById('sessionPanel'),
+      toast: document.getElementById('toast'),
+    };
+
+    els.startBtn.addEventListener('click', startGame);
+    els.restoreBtn.addEventListener('click', restoreSession);
+    els.refreshBtn.addEventListener('click', refreshAll);
+    els.debugBtn.addEventListener('click', loadDebugState);
+    els.deleteBtn.addEventListener('click', deleteCurrentSession);
+    els.sendBtn.addEventListener('click', () => sendAction());
+    els.actionInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendAction();
+      }
+    });
+
+    window.addEventListener('load', async () => {
+      await loadWorlds();
+      if (sessionId) {
+        hideEmptyScreen();
+        addSystemLog('Đã phát hiện phiên lưu cục bộ · ' + sessionId.slice(0, 8) + '…');
+        await refreshAll();
+      }
+    });
+
+    async function loadWorlds() {
+      try {
+        const res = await fetch(API + '/game/worlds');
+        if (!res.ok) throw new Error(await readError(res));
+        const data = await res.json();
+        const worlds = Array.isArray(data.worlds) ? data.worlds : [];
+
+        els.worldSelect.innerHTML = '';
+        worlds.forEach(w => {
+          const opt = document.createElement('option');
+          opt.value = w.world_id;
+          opt.textContent = `${w.name} (${w.genre})`;
+          els.worldSelect.appendChild(opt);
+        });
+
+        if (worlds.length === 0) {
+          const opt = document.createElement('option');
+          opt.textContent = 'Không tải được world';
+          els.worldSelect.appendChild(opt);
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Không tải được danh sách thế giới: ' + (err.message || err), 'error');
+      }
+    }
+
+    async function startGame() {
+      if (isStartingGame) return;
+
+      const playerName = els.playerNameInput.value.trim();
+      const worldId = els.worldSelect.value;
+      if (!worldId) return showToast('Hãy chọn thế giới trước.', 'error');
+      if (!playerName) return showToast('Hãy nhập tên nhân vật trước.', 'error');
+
+      const payload = {
+        world_id: worldId,
+        player_name: playerName,
+        background: els.backgroundInput.value.trim() || 'kẻ lang thang mất ký ức',
+        personality_traits: csvToList(els.traitsInput.value),
+        virtues: csvToList(els.virtuesInput.value),
+        flaws: csvToList(els.flawsInput.value),
+        fears: csvToList(els.fearsInput.value),
+        goals: csvToList(els.goalsInput.value),
+      };
+
+      isStartingGame = true;
+      els.startBtn.disabled = true;
+
+      try {
+        const res = await fetch(API + '/game/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(await readError(res));
+
+        const data = await res.json();
+        sessionId = data.session_id;
+        sessionStorage.setItem('sessionId', sessionId);
+        turnCounter = 0;
+        lastDebugState = null;
+
+        clearLog();
+        hideEmptyScreen();
+        addSystemLog(`Phiêu lưu bắt đầu · ${playerName}`);
+        if (data.message) addSystemLog(data.message);
+
+        await refreshAll(true);
+        showToast('Đã tạo phiên mới thành công.', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast(err.message || 'Có lỗi khi bắt đầu game.', 'error');
+      } finally {
+        isStartingGame = false;
+        els.startBtn.disabled = false;
+      }
+    }
+
+    async function restoreSession() {
+      if (!sessionId) {
+        showToast('Không có sessionId lưu trong trình duyệt.', 'error');
+        return;
+      }
+      clearLog();
+      hideEmptyScreen();
+      addSystemLog('Đang khôi phục phiên · ' + sessionId.slice(0, 8) + '…');
+      await refreshAll(true);
+    }
+
+    async function refreshAll(silent = false) {
+      if (!sessionId) {
+        if (!silent) showToast('Chưa có phiên để làm mới.', 'error');
+        renderSessionInfo();
+        return;
+      }
+      await refreshState();
+      await loadDebugState(true);
+      renderSessionInfo();
+    }
+
+    async function sendAction(forcedContent = null) {
+      if (isSendingAction) return;
+      if (!sessionId) return showToast('Hãy bắt đầu game trước.', 'error');
+
+      const actionType = els.actionTypeSelect.value;
+      const action = (forcedContent || els.actionInput.value).trim();
+      if (!action) return;
+
+      hideEmptyScreen();
+      clearAllChoicePanels();
+      renderPlayerAction(actionType, action);
+      const loadingEl = appendLoading();
+
+      isSendingAction = true;
+      els.sendBtn.disabled = true;
+      els.actionInput.value = '';
+
+      try {
+        const res = await fetch(API + '/game/turn', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId, action_type: actionType, content: action }),
+        });
+        if (!res.ok) throw new Error(await readError(res));
+
+        const data = await res.json();
+        turnCounter += 1;
+        loadingEl.remove();
+
+        const choices = Array.isArray(data.choices) && data.choices.length > 0
+          ? data.choices
+          : parseChoicesFromText(data.narrative || '');
+
+        renderTurn({
+          actionType,
+          narrative: data.narrative || '',
+          choices,
+          stateChanges: Array.isArray(data.state_changes) ? data.state_changes : [],
+        });
+
+        await refreshAll(true);
+      } catch (err) {
+        loadingEl.remove();
+        console.error(err);
+        showToast(err.message || 'Có lỗi khi gửi hành động.', 'error');
+      } finally {
+        isSendingAction = false;
+        els.sendBtn.disabled = false;
+      }
+    }
+
+    async function refreshState() {
+      try {
+        const res = await fetch(API + '/game/' + encodeURIComponent(sessionId));
+        if (!res.ok) throw new Error(await readError(res));
+        const data = await res.json();
+        renderBaseState(data);
+      } catch (err) {
+        console.error(err);
+        showToast('Không lấy được game state: ' + (err.message || err), 'error');
+      }
+    }
+
+    async function loadDebugState(silent = false) {
+      if (!sessionId) {
+        if (!silent) showToast('Chưa có phiên để debug.', 'error');
+        return;
+      }
+      try {
+        const res = await fetch(API + '/debug/state/' + encodeURIComponent(sessionId));
+        if (!res.ok) throw new Error(await readError(res));
+        lastDebugState = await res.json();
+        renderDebugState(lastDebugState);
+        if (!silent) showToast('Đã nạp debug state.', 'success');
+      } catch (err) {
+        console.error(err);
+        if (!silent) showToast('Không lấy được debug state: ' + (err.message || err), 'error');
+      }
+    }
+
+    async function deleteCurrentSession() {
+      if (!sessionId) return showToast('Chưa có phiên để xóa.', 'error');
+      const ok = window.confirm('Bạn có chắc muốn xóa session hiện tại không?');
+      if (!ok) return;
+
+      try {
+        const res = await fetch(API + '/game/' + encodeURIComponent(sessionId), { method: 'DELETE' });
+        if (!res.ok) throw new Error(await readError(res));
+
+        sessionStorage.removeItem('sessionId');
+        sessionId = null;
+        lastDebugState = null;
+        turnCounter = 0;
+        clearLog();
+        showEmptyScreen();
+        clearPanels();
+        renderSessionInfo();
+        showToast('Đã xóa phiên hiện tại.', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast(err.message || 'Không xóa được session.', 'error');
+      }
+    }
+
+    function renderBaseState(data) {
+      const hp = clampNumber(data.hp, 0, 100, 100);
+      const turn = Number.isFinite(Number(data.turn_count)) ? Number(data.turn_count) : 0;
+      turnCounter = Math.max(turnCounter, turn);
+
+      els.playerStatePanel.innerHTML = `
+        <div class="stat-block">
+          <div>
+            <div class="hp-row">
+              <span class="small-label">Sinh lực</span>
+              <span class="hp-value">${hp}/100</span>
+            </div>
+            <div class="bar-bg"><div class="bar-fill" style="width:${hp}%"></div></div>
+          </div>
+          <div class="kv-list">
+            ${kv('Nhân vật', esc(data.player_name || '—'))}
+            ${kv('Stamina', esc(String(data.stamina ?? '—')))}
+            ${kv('Stress', esc(String(data.stress ?? '—')))}
+            ${kv('Lượt', esc(String(turn)))}
+          </div>
+        </div>
+      `;
+
+      els.worldStatePanel.innerHTML = `
+        <div class="kv-list">
+          ${kv('Thế giới', esc(data.world_name || '—'))}
+          ${kv('Địa điểm', esc(data.location || '—'))}
+          ${kv('Mục tiêu gần', esc(data.current_objective || '—'))}
+          ${kv('Session', `<span class="mono">${esc(data.session_id || '—')}</span>`)}
+        </div>
+      `;
+
+      els.sessionChips.innerHTML = `
+        <div class="chip"><strong>Session</strong> ${shortId(data.session_id)}</div>
+        <div class="chip"><strong>Turn</strong> ${esc(String(turn))}</div>
+        <div class="chip"><strong>HP</strong> ${esc(String(hp))}</div>
+        <div class="chip"><strong>World</strong> ${esc(data.world_name || '—')}</div>
+      `;
+
+      renderSessionInfo(data);
+    }
+
+    function renderDebugState(state) {
+      const player = state?.character_profile || {};
+      const story = state?.story_state || {};
+      const world = state?.world || {};
+      const inventory = Array.isArray(state?.inventory) ? state.inventory : [];
+      const quests = Array.isArray(state?.dynamic_quests) ? state.dynamic_quests : [];
+      const npcs = Array.isArray(state?.npcs) ? state.npcs : [];
+      const activeEvents = Array.isArray(state?.active_events) ? state.active_events : [];
+      const discoveries = Array.isArray(world?.discoveries) ? world.discoveries : [];
+      const memory = state?.story_memory || {};
+
+      const hp = clampNumber(player.hp, 0, 100, 100);
+
+      els.playerStatePanel.innerHTML = `
+        <div class="stat-block">
+          <div>
+            <div class="hp-row">
+              <span class="small-label">Sinh lực</span>
+              <span class="hp-value">${hp}/100</span>
+            </div>
+            <div class="bar-bg"><div class="bar-fill" style="width:${hp}%"></div></div>
+          </div>
+          <div class="kv-list">
+            ${kv('Tên', esc(player.name || '—'))}
+            ${kv('Xuất thân', esc(player.background || '—'))}
+            ${kv('Stamina', esc(String(player.stamina ?? '—')))}
+            ${kv('Hunger', esc(String(player.hunger ?? '—')))}
+            ${kv('Thirst', esc(String(player.thirst ?? '—')))}
+            ${kv('Stress', esc(String(player.stress ?? '—')))}
+            ${kv('Reputation', esc(String(player.reputation ?? '—')))}
+            ${kv('Tính cách', renderTagList(player.personality_traits))}
+            ${kv('Phẩm chất', renderTagList(player.virtues))}
+            ${kv('Khuyết điểm', renderTagList(player.flaws))}
+            ${kv('Nỗi sợ', renderTagList(player.fears))}
+            ${kv('Mục tiêu', renderTagList(player.goals))}
+          </div>
+        </div>
+      `;
+
+      els.worldStatePanel.innerHTML = `
+        <div class="kv-list">
+          ${kv('World ID', esc(state?.world_definition?.world_id || '—'))}
+          ${kv('Tên thế giới', esc(state?.world_definition?.name || '—'))}
+          ${kv('Genre', esc(state?.world_definition?.genre || '—'))}
+          ${kv('Tone', esc(state?.world_definition?.tone || '—'))}
+          ${kv('Địa điểm', esc(world.location || '—'))}
+          ${kv('Region', esc(world.region || '—'))}
+          ${kv('Landmark', esc(world.landmark || '—'))}
+          ${kv('Time', esc(world.time_of_day || '—'))}
+          ${kv('Danger', esc(String(world.danger_level ?? '—')))}
+          ${kv('Threat', esc(world.threat_state || '—'))}
+          ${kv('Combat', esc(world.in_combat ? `Đang đánh với ${world.combat_enemy || 'kẻ địch không rõ'}` : 'Không'))}
+          ${kv('Objective', esc(story.current_objective || '—'))}
+          ${kv('Situation', esc(story.current_situation || '—'))}
+          ${kv('Tension', esc(story.current_tension || '—'))}
+          ${kv('Questions', renderTagList(story.unresolved_questions))}
+        </div>
+      `;
+
+      els.questsPanel.innerHTML = quests.length
+        ? `<div class="simple-list">${quests.map(q => `
+            <div class="item">
+              <div><strong>${esc(q.title || 'Nhiệm vụ')}</strong></div>
+              <div style="margin-top:6px;">${esc(q.summary || 'Chưa có tóm tắt')}</div>
+              <div style="margin-top:6px;color:var(--muted);font-size:13px;">
+                Mục tiêu: ${esc(q.objective || '—')}<br>
+                Trạng thái: ${esc(q.status || '—')} · Nguồn: ${esc(q.origin || '—')}
+              </div>
+            </div>
+          `).join('')}</div>`
+        : `<div class="hint">Chưa có nhiệm vụ động nào.</div>`;
+
+      els.npcsPanel.innerHTML = npcs.length
+        ? `<div class="simple-list">${npcs.map(npc => `
+            <div class="item">
+              <div><strong>${esc(npc.name || 'NPC')}</strong> · ${esc(npc.role || 'vai trò chưa rõ')}</div>
+              <div style="margin-top:6px;color:var(--muted);font-size:13px;">
+                Tính cách: ${esc((npc.personality?.traits || []).join(', ') || '—')}<br>
+                Nói: ${esc(npc.personality?.speaking_style || '—')} · Đạo đức: ${esc(npc.personality?.moral_alignment || '—')}
+              </div>
+              <div style="margin-top:6px;font-size:13px;">
+                Memory ngắn: ${esc((npc.memory?.short_term || []).join(' | ') || '—')}<br>
+                Memory dài: ${esc((npc.memory?.long_term_facts || []).join(' | ') || '—')}
+              </div>
+            </div>
+          `).join('')}</div>`
+        : `<div class="hint">Chưa có NPC nào trong state.</div>`;
+
+      els.inventoryPanel.innerHTML = inventory.length
+        ? `<div class="simple-list">${inventory.map(item => `
+            <div class="item">
+              <strong>${esc(item.name || 'Vật phẩm')}</strong>
+              <div style="margin-top:6px;color:var(--muted);font-size:13px;">
+                Loại: ${esc(item.item_type || 'misc')} · Số lượng: ${esc(String(item.quantity ?? 1))} · Power: ${esc(String(item.power ?? 0))}
+              </div>
+              ${item.description ? `<div style="margin-top:6px;">${esc(item.description)}</div>` : ''}
+            </div>
+          `).join('')}</div>`
+        : `<div class="hint">Inventory đang trống.</div>`;
+
+      els.eventsPanel.innerHTML = `
+        ${activeEvents.length ? `<div class="mini-title">Sự kiện đang có</div><div class="simple-list">${activeEvents.map(ev => `
+          <div class="item">
+            <strong>${esc(ev.title || 'Event')}</strong>
+            <div style="margin-top:6px;">${esc(ev.description || '—')}</div>
+            <div style="margin-top:6px;color:var(--muted);font-size:13px;">
+              Type: ${esc(ev.event_type || '—')} · Severity: ${esc(String(ev.severity ?? '—'))} · Resolved: ${ev.is_resolved ? 'yes' : 'no'}
+            </div>
+          </div>`).join('')}</div>` : `<div class="hint">Không có active event.</div>`}
+        <div style="height:12px"></div>
+        ${discoveries.length ? `<div class="mini-title">Khám phá gần đây</div><div class="simple-list">${discoveries.map(d => `<div class="item"><strong>${esc(d.type || 'generic')}</strong><div style="margin-top:6px;">${esc(d.content || '—')}</div></div>`).join('')}</div>` : `<div class="hint">Chưa có discovery.</div>`}
+      `;
+
+      const recentEvents = Array.isArray(memory.recent_events) ? memory.recent_events : [];
+      const importantFacts = Array.isArray(memory.important_facts) ? memory.important_facts : [];
+      els.memoryPanel.innerHTML = `
+        <div class="mini-title">Recent events</div>
+        ${recentEvents.length ? `<div class="simple-list">${recentEvents.map(x => `<div class="item">${esc(x)}</div>`).join('')}</div>` : `<div class="hint">Chưa có recent events.</div>`}
+        <div style="height:12px"></div>
+        <div class="mini-title">Important facts</div>
+        ${importantFacts.length ? `<div class="simple-list">${importantFacts.map(x => `<div class="item">${esc(x)}</div>`).join('')}</div>` : `<div class="hint">Chưa có important facts.</div>`}
+      `;
+
+      els.sessionChips.innerHTML = `
+        <div class="chip"><strong>Session</strong> ${shortId(state.session_id)}</div>
+        <div class="chip"><strong>Turn</strong> ${esc(String(state.turn_count ?? 0))}</div>
+        <div class="chip"><strong>World</strong> ${esc(state?.world_definition?.name || '—')}</div>
+        <div class="chip"><strong>Threat</strong> ${esc(world.threat_state || '—')}</div>
+        <div class="chip"><strong>Combat</strong> ${world.in_combat ? 'Có' : 'Không'}</div>
+      `;
+
+      renderSessionInfo(state);
+    }
+
+    function renderSessionInfo(base = null) {
+      const src = base || lastDebugState || {};
+      els.sessionPanel.innerHTML = `
+        <div class="kv-list">
+          ${kv('API base', `<span class="mono">${esc(API)}</span>`)}
+          ${kv('Session ID', `<span class="mono">${esc(sessionId || 'chưa có')}</span>`)}
+          ${kv('Turn counter UI', esc(String(turnCounter)))}
+          ${kv('World hiện tại', esc(src?.world_definition?.name || src?.world_name || '—'))}
+          ${kv('Player', esc(src?.character_profile?.name || src?.player_name || '—'))}
+        </div>
+      `;
+    }
+
+    function renderPlayerAction(actionType, action) {
+      const wrap = document.createElement('div');
+      wrap.className = 'player-bubble-wrap';
+      wrap.innerHTML = `<div class="player-bubble">💬 <strong style="color:var(--gold)">${esc(actionType)}</strong> · ${esc(action)}</div>`;
+      els.log.appendChild(wrap);
+      scrollLogToBottom();
+    }
+
+    function renderTurn({ actionType, narrative, choices, stateChanges }) {
+      const card = document.createElement('div');
+      card.className = 'turn-card';
+
+      const header = document.createElement('div');
+      header.className = 'turn-header';
+      header.innerHTML = `<span class="turn-num">Lượt ${turnCounter} · ${esc(actionType)}</span><span class="turn-divider"></span>`;
+
+      const story = document.createElement('div');
+      story.className = 'turn-story typing';
+
+      card.appendChild(header);
+      card.appendChild(story);
+      els.log.appendChild(card);
+      scrollLogToBottom();
+
+      const cleaned = cleanNarrative(String(narrative || ''), choices);
+      let i = 0;
+      const batch = 4;
+
+      function typeNext() {
+        if (i < cleaned.length) {
+          renderDropCap(story, cleaned.slice(0, i + batch), true);
+          i += batch;
+          scrollLogToBottom();
+          requestAnimationFrame(typeNext);
+        } else {
+          renderDropCap(story, cleaned, false);
+
+          if (stateChanges?.length) {
+            const box = document.createElement('div');
+            box.className = 'state-change-box';
+            box.innerHTML = `
+              <div class="mini-title">State changes</div>
+              <div class="simple-list">${stateChanges.map(x => `<div class="item">${esc(x)}</div>`).join('')}</div>
+            `;
+            card.appendChild(box);
+          }
+
+          if (choices.length > 0) {
+            const section = document.createElement('div');
+            section.className = 'choices-section';
+
+            const label = document.createElement('div');
+            label.className = 'choices-label';
+            label.textContent = 'Lựa chọn';
+
+            const box = document.createElement('div');
+            box.className = 'turn-choices';
+
+            choices.forEach((choice, idx) => {
+              const clean = normalizeChoice(choice);
+              if (!clean) return;
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'choice-btn';
+              btn.innerHTML = `<span class="choice-num">${idx + 1}.</span><span>${esc(clean)}</span>`;
+              btn.addEventListener('click', () => sendAction(clean));
+              box.appendChild(btn);
+            });
+
+            if (box.children.length) {
+              section.appendChild(label);
+              section.appendChild(box);
+              card.appendChild(section);
+            }
+          }
+
+          scrollLogToBottom();
+        }
+      }
+      typeNext();
+    }
+
+    function appendLoading() {
+      const el = document.createElement('div');
+      el.className = 'loading-row';
+      el.innerHTML = `<div class="spinner"></div><span>Người kể chuyện đang viết…</span>`;
+      els.log.appendChild(el);
+      scrollLogToBottom();
+      return el;
+    }
+
+    function addSystemLog(text) {
+      const div = document.createElement('div');
+      div.className = 'system-log';
+      div.textContent = text;
+      els.log.appendChild(div);
+      scrollLogToBottom();
+    }
+
+    function clearLog() {
+      els.log.innerHTML = '';
+    }
+
+    function clearPanels() {
+      els.playerStatePanel.innerHTML = '<div class="hint">Chưa có dữ liệu nhân vật.</div>';
+      els.worldStatePanel.innerHTML = '<div class="hint">Chưa có dữ liệu thế giới.</div>';
+      els.questsPanel.innerHTML = '<div class="hint">Chưa có nhiệm vụ nào được nạp.</div>';
+      els.npcsPanel.innerHTML = '<div class="hint">Chưa có NPC nào được nạp.</div>';
+      els.inventoryPanel.innerHTML = '<div class="hint">Chưa có dữ liệu inventory.</div>';
+      els.eventsPanel.innerHTML = '<div class="hint">Chưa có sự kiện nào được nạp.</div>';
+      els.memoryPanel.innerHTML = '<div class="hint">Chưa có dữ liệu memory.</div>';
+      els.sessionPanel.innerHTML = '<div class="hint">Phiên sẽ hiện ở đây sau khi start hoặc restore.</div>';
+      els.sessionChips.innerHTML = '<div class="chip"><strong>Chưa có phiên</strong></div>';
+    }
+
+    function clearAllChoicePanels() {
+      document.querySelectorAll('.choices-section').forEach(el => el.remove());
+    }
+
+    function renderDropCap(el, text, isTyping) {
+      if (!text) { el.textContent = ''; return; }
+      el.innerHTML = '';
+      const span = document.createElement('span');
+      span.className = 'drop-cap';
+      span.textContent = text[0];
+      el.appendChild(span);
+      el.appendChild(document.createTextNode(text.slice(1)));
+      isTyping ? el.classList.add('typing') : el.classList.remove('typing');
+    }
+
+    function cleanNarrative(text, choices = []) {
+      const lines = String(text).split('\n');
+      const markerPattern = /\[\s*(?:lựa\s*chọn|chọn|bước\s*hành\s*động|hành\s*động)\s*\]/iu;
+      const genericChoicesPattern = /^choices\s*:/iu;
+      const numberedChoicePattern = /^(?:\d+[\.\)]|[IVXivx]+\.|[-*•])\s+(.+)$/;
+      const normalizedChoices = choices.map(c => String(normalizeChoice(c)).trim().toLowerCase()).filter(Boolean);
+      const cleanedLines = [];
+      let choiceStarted = false;
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) {
+          if (!choiceStarted) cleanedLines.push('');
+          continue;
+        }
+        if (markerPattern.test(line) || genericChoicesPattern.test(line)) {
+          choiceStarted = true;
+          continue;
+        }
+        const match = line.match(numberedChoicePattern);
+        if (match) {
+          const candidate = match[1].trim().toLowerCase();
+          if (normalizedChoices.length === 0 || normalizedChoices.includes(candidate)) {
+            choiceStarted = true;
+            continue;
+          }
+        }
+        if (!choiceStarted) cleanedLines.push(rawLine);
+      }
+      return cleanedLines.join('\n').trim();
+    }
+
+    function parseChoicesFromText(text) {
+      const blockMatch = String(text).match(/\[LỰA CHỌN\]([\s\S]*?)(?:\[|$)/i);
+      const block = blockMatch ? blockMatch[1] : String(text);
+      const pattern = /^\s*(?:\d+[.)]\s*|[-*•]\s+)(.+)$/gm;
+      const choices = [];
+      let m;
+      while ((m = pattern.exec(block)) !== null) {
+        const c = m[1].trim();
+        if (c && c.length < 200) choices.push(c);
+      }
+      return choices.slice(0, 4);
+    }
+
+    function normalizeChoice(choice) {
+      if (!choice) return '';
+      if (typeof choice === 'string') {
+        const text = choice.trim();
+        if (!text.toLowerCase().includes('choice')) return text;
+        return extractChoiceFromPseudoObject(text) || text;
+      }
+      if (typeof choice === 'object') {
+        if (choice.choice) return String(choice.choice).trim();
+        if (choice.text) return String(choice.text).trim();
+      }
+      return '';
+    }
+
+    function extractChoiceFromPseudoObject(text) {
+      try {
+        const fixed = text
+          .replace(/([{,]\s*)'([^']+?)'\s*:/g, '$1"$2":')
+          .replace(/:\s*'([^']*?)'/g, ':"$1"');
+        const obj = JSON.parse(fixed);
+        if (obj.choice) return String(obj.choice).trim();
+        if (obj.text) return String(obj.text).trim();
+      } catch (_) {
+        const match = text.match(/choice\s*[:=]\s*['"]([^'"]+)['"]/i);
+        if (match) return match[1].trim();
+      }
+      return '';
+    }
+
+    function showToast(message, type = '') {
+      els.toast.textContent = message;
+      els.toast.className = 'toast ' + (type || '');
+      requestAnimationFrame(() => els.toast.classList.add('show'));
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => els.toast.classList.remove('show'), 2600);
+    }
+
+    function showEmptyScreen() {
+      if (!document.getElementById('emptyScreen')) {
+        els.log.innerHTML = `<div class="empty-screen" id="emptyScreen"><div><div class="glyph">⚜</div><div>Hãy tạo hoặc khôi phục một phiên chơi để bắt đầu phiêu lưu.</div></div></div>`;
+      }
+    }
+
+    function hideEmptyScreen() {
+      const node = document.getElementById('emptyScreen');
+      if (node) node.remove();
+    }
+
+    function scrollLogToBottom() {
+      els.log.scrollTop = els.log.scrollHeight;
+    }
+
+    function csvToList(text) {
+      return String(text || '')
+        .split(',')
+        .map(x => x.trim())
+        .filter(Boolean);
+    }
+
+    function renderTagList(values) {
+      const list = Array.isArray(values) ? values.filter(Boolean) : [];
+      if (!list.length) return '<span style="color:var(--muted)">—</span>';
+      return `<div class="tag-list">${list.map(v => `<span class="tag">${esc(String(v))}</span>`).join('')}</div>`;
+    }
+
+    function kv(key, value) {
+      return `<div class="kv-item"><div class="kv-key">${key}</div><div class="kv-value">${value}</div></div>`;
+    }
+
+    function shortId(id) {
+      if (!id) return '—';
+      return esc(String(id).slice(0, 8) + '…');
+    }
+
+    async function readError(res) {
+      try {
+        const data = await res.json();
+        if (typeof data?.detail === 'string') return data.detail;
+        return JSON.stringify(data);
+      } catch (_) {
+        return await res.text();
+      }
+    }
+
+    function clampNumber(value, min, max, fallback) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return fallback;
+      return Math.max(min, Math.min(max, n));
+    }
+
+    function esc(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+  </script>
+</body>
+</html>

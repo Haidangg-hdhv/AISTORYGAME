@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Đăng nhập - AI Story Game</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="shared.js"></script>
+</head>
+<body style="display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #1a1a2e; color: white;">
+    <div style="background: #16213e; padding: 40px; border-radius: 10px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+        <h2>🎮 AI STORY GAME</h2>
+        <p>Đăng nhập để lưu tiến trình của bạn</p>
+        <input type="email" id="email" placeholder="Nhập Email" style="display: block; width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none;">
+        <input type="password" id="password" placeholder="Nhập Mật khẩu" style="display: block; width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none;">
+        
+        <button onclick="login()" style="padding: 10px 20px; margin-top: 10px; background: #0f3460; color: white; border: none; border-radius: 5px; cursor: pointer;">Đăng nhập</button>
+        <button onclick="register()" style="padding: 10px 20px; margin-top: 10px; background: #e94560; color: white; border: none; border-radius: 5px; cursor: pointer;">Đăng ký mới</button>
+        
+        <p id="error-msg" style="color: #ff4d4d; margin-top: 15px; font-size: 14px;"></p>
+    </div>
+
+    <script>
+        const auth = firebase.auth();
+
+        function login() {
+            const e = document.getElementById('email').value;
+            const p = document.getElementById('password').value;
+            auth.signInWithEmailAndPassword(e, p)
+                .then(() => window.location.href = 'index.html') // Chuyển vô game
+                .catch(err => document.getElementById('error-msg').innerText = "Lỗi: " + err.message);
+        }
+
+        function register() {
+            const e = document.getElementById('email').value;
+            const p = document.getElementById('password').value;
+            auth.createUserWithEmailAndPassword(e, p)
+                .then(() => alert('Tạo tài khoản thành công! Giờ bạn có thể Đăng nhập.'))
+                .catch(err => document.getElementById('error-msg').innerText = "Lỗi: " + err.message);
+        }
+    </script>
+</body>
+</html>

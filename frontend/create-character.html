@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tạo Nhân Vật</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero hero-character">
+      <div class="hero-copy narrow">
+        <a class="text-link" href="./index.html">← Quay lại chọn thế giới</a>
+        <div style="margin-top:12px;">
+          <button class="btn btn-soft" type="button" data-theme-toggle>🌙 Chế độ tối</button>
+        </div>
+        <div class="eyebrow">Tạo nhân vật</div>
+        <h1>Gieo nên một con người, rồi để câu chuyện tự lớn lên</h1>
+        <p>Chỉ cần đặt tên, rồi chọn nhanh những nét nổi bật bằng cách bấm vào các gợi ý bên dưới.</p>
+      </div>
+      <div class="selected-world-box" id="selectedWorldBox"></div>
+    </header>
+
+    <main class="character-layout">
+      <section class="readable-card panel-soft">
+        <div class="panel-head">
+          <h2>Tên nhân vật</h2>
+        </div>
+        <div class="field-stack compact-stack">
+          <input id="player_name" class="text-input big-input" placeholder="Ví dụ: Thắng, Lam, Dạ Tước..." maxlength="50" />
+        </div>
+      </section>
+
+      <section class="readable-card panel-soft">
+        <div class="panel-head split-head">
+          <div>
+            <h2>Tính cách</h2>
+            <p>Chọn những nét bạn muốn nhân vật thể hiện rõ nhất.</p>
+          </div>
+          <button class="btn btn-soft" id="rerollTraitsBtn">Roll lại</button>
+        </div>
+        <div id="traitsPool" class="chip-picker"></div>
+        <div class="picked-line"><span>Đã chọn:</span> <div id="traitsChosen" class="picked-chips"></div></div>
+      </section>
+
+      <section class="readable-card panel-soft">
+        <div class="panel-head split-head">
+          <div>
+            <h2>Phẩm chất</h2>
+            <p>Đây là những điều khiến nhân vật đáng tin, đáng nhớ hoặc đáng nể.</p>
+          </div>
+          <button class="btn btn-soft" id="rerollVirtuesBtn">Roll lại</button>
+        </div>
+        <div id="virtuesPool" class="chip-picker"></div>
+        <div class="picked-line"><span>Đã chọn:</span> <div id="virtuesChosen" class="picked-chips"></div></div>
+      </section>
+
+      <section class="readable-card panel-soft aside-card">
+        <div class="panel-head">
+          <h2>Hoàn tất</h2>
+          <p>Khi bấm bắt đầu, frontend sẽ tự tạo phần mô tả nền tối giản để phù hợp với backend hiện tại.</p>
+        </div>
+        <div class="summary-box" id="characterPreview"></div>
+        <div class="cta-stack">
+          <button class="btn" id="startGameBtn">Bắt đầu hành trình</button>
+          <button class="btn btn-soft" id="saveDraftBtn">Lưu lựa chọn</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="./shared.js"></script>
+  <script>
+    const ALL_TRAITS = [
+      'điềm tĩnh','gan lì','đa nghi','nhạy bén','lạnh lùng','quyết đoán','táo bạo','ít nói','tò mò','kiên nhẫn',
+      'mơ mộng','cứng đầu','khéo léo','thận trọng','bản lĩnh','bí ẩn','thực tế','sắc sảo','lì lợm','tự chủ'
+    ];
+    const ALL_VIRTUES = [
+      'trung thành','can đảm','bền bỉ','bao dung','tinh tế','thẳng thắn','giữ lời','nhân hậu','chịu đựng giỏi','biết lắng nghe',
+      'nhanh trí','giúp đỡ người khác','dũng cảm','kiên định','biết hy sinh','tự lập','tôn trọng lời hứa','bình tĩnh','sâu sắc','nhiệt thành'
+    ];
+
+    const selectedTraits = new Set((storage.draftCharacter?.personality_traits || []));
+    const selectedVirtues = new Set((storage.draftCharacter?.virtues || []));
+    const traitsPool = qs('#traitsPool');
+    const virtuesPool = qs('#virtuesPool');
+    function getSelectedWorld() {
+  const sessionRaw = sessionStorage.getItem('selectedWorld');
+  if (sessionRaw) {
+    try {
+      const parsed = JSON.parse(sessionRaw);
+      storage.selectedWorld = parsed;
+      return parsed;
+    } catch {}
+  }
+
+  if (storage.selectedWorld) return storage.selectedWorld;
+
+  return null;
+}
+    function sample(arr, count) {
+      const copy = [...arr].sort(() => Math.random() - 0.5);
+      return copy.slice(0, count);
+    }
+
+    function renderWorld() {
+  const w = getSelectedWorld();
+
+  if (!w) {
+    qs('#selectedWorldBox').innerHTML =
+      '<div class="notice-card">Bạn chưa chọn thế giới. Hãy quay lại trang trước.</div>';
+    return;
+  }
+
+  qs('#selectedWorldBox').innerHTML = `
+    <div class="selected-world-card world-${esc(w.world_id)}">
+      <div class="eyebrow small">${esc(w.genre || '')}</div>
+      <h3>${esc(w.name)}</h3>
+      <p>${esc(w.tone || '')}</p>
+    </div>
+  `;
+}
+
+    function renderPicker(container, items, selectedSet, targetElId) {
+      container.innerHTML = items.map(item => `
+        <button type="button" class="pick-chip ${selectedSet.has(item) ? 'active' : ''}" data-value="${esc(item)}">${esc(item)}</button>
+      `).join('');
+      qsa('.pick-chip', container).forEach(btn => {
+        btn.addEventListener('click', () => {
+          const value = btn.dataset.value;
+          if (selectedSet.has(value)) selectedSet.delete(value);
+          else selectedSet.add(value);
+          renderChosen(targetElId, selectedSet);
+          renderPicker(container, items, selectedSet, targetElId);
+          updatePreview();
+        });
+      });
+    }
+
+    function renderChosen(id, setObj) {
+      const values = [...setObj];
+      qs('#' + id).innerHTML = values.length
+        ? values.map(v => `<span class="mini-chip">${esc(v)}</span>`).join('')
+        : '<span class="placeholder-inline">Chưa chọn</span>';
+    }
+
+    function rerollTraits() { renderPicker(traitsPool, sample(ALL_TRAITS, 10), selectedTraits, 'traitsChosen'); }
+    function rerollVirtues() { renderPicker(virtuesPool, sample(ALL_VIRTUES, 10), selectedVirtues, 'virtuesChosen'); }
+
+    function buildPayload() {
+      const selectedWorld = getSelectedWorld();
+      const player_name = qs('#player_name').value.trim();
+      const personality_traits = [...selectedTraits];
+      const virtues = [...selectedVirtues];
+
+      return {
+        world_id: selectedWorld?.world_id || '',
+        player_name,
+        background: personality_traits.length || virtues.length
+          ? `Một kẻ lữ hành mang khí chất ${personality_traits.slice(0,2).join(', ') || 'khó đoán'}, nổi bật bởi ${virtues.slice(0,2).join(', ') || 'ý chí bền bỉ'}.`
+          : 'Một kẻ lữ hành vừa bước vào vùng đất xa lạ.',
+        personality_traits,
+        virtues,
+        flaws: ['bốc đồng'],
+        fears: ['đánh mất chính mình'],
+        goals: ['sống sót và tìm ra con đường của riêng mình']
+      };
+    }
+
+    function updatePreview() {
+      const p = buildPayload();
+      qs('#characterPreview').innerHTML = `
+        <div class="preview-item"><strong>Tên:</strong> ${esc(p.player_name || 'Chưa đặt tên')}</div>
+        <div class="preview-item"><strong>Tính cách:</strong> ${esc(p.personality_traits.join(', ') || 'Chưa chọn')}</div>
+        <div class="preview-item"><strong>Phẩm chất:</strong> ${esc(p.virtues.join(', ') || 'Chưa chọn')}</div>
+      `;
+    }
+
+    function saveDraft() {
+      storage.draftCharacter = {
+        player_name: qs('#player_name').value.trim(),
+        personality_traits: [...selectedTraits],
+        virtues: [...selectedVirtues]
+      };
+    }
+
+    async function startGame() {
+      const selectedWorld = getSelectedWorld();
+      if (!selectedWorld) {
+        alert('Bạn chưa chọn thế giới.');
+        go('./index.html');
+        return;
+      }
+
+      const payload = buildPayload();
+
+      if (!payload.player_name) {
+        alert('Hãy nhập tên nhân vật.');
+        return;
+      }
+
+      try {
+        saveDraft();
+
+        console.log('SELECTED WORLD:', selectedWorld);
+        console.log('START PAYLOAD:', payload);
+
+        const data = await safeFetch('/game/start', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+
+        storage.sessionId = data.session_id;
+        go('./game.html');
+      } catch (err) {
+        alert(err.message || 'Không thể bắt đầu phiên mới.');
+      }
+    }
+
+    qs('#rerollTraitsBtn').addEventListener('click', rerollTraits);
+    qs('#rerollVirtuesBtn').addEventListener('click', rerollVirtues);
+    qs('#saveDraftBtn').addEventListener('click', () => { saveDraft(); alert('Đã lưu lựa chọn hiện tại.'); });
+    qs('#startGameBtn').addEventListener('click', startGame);
+    qs('#player_name').addEventListener('input', updatePreview);
+    const selectedWorld = getSelectedWorld();
+    if (!selectedWorld) {
+      alert('Bạn chưa chọn thế giới.');
+      go('./index.html');
+    }
+    renderWorld();
+    qs('#player_name').value = storage.draftCharacter?.player_name || '';
+    rerollTraits();
+    rerollVirtues();
+    renderChosen('traitsChosen', selectedTraits);
+    renderChosen('virtuesChosen', selectedVirtues);
+    updatePreview();
+  </script>
+</body>
+</html>

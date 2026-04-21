@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chọn Thế Giới</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    
+    <script src="shared.js"></script>
+
+    <script>
+        firebase.auth().onAuthStateChanged((user) => {
+        if (!user) {
+            window.location.href = 'login.html'; 
+        } else {
+            console.log("Người chơi hiện tại có UID là:", user.uid);
+            // DÒNG THÊM MỚI: Lưu thẻ căn cước vào sổ tay trình duyệt
+            localStorage.setItem("my_uid", user.uid); 
+        }
+    });
+    </script>
+  <style>
+    /* CSS nhúng nhanh cho cửa sổ Popup chọn Save Game */
+    .modal-overlay {
+      display: none;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.7); z-index: 999;
+      justify-content: center; align-items: center;
+    }
+    .modal-content {
+      background: var(--bg); border: 1px solid var(--border);
+      padding: 24px; border-radius: 12px; max-width: 500px; width: 90%;
+      max-height: 80vh; overflow-y: auto; color: var(--text);
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .close-btn { cursor: pointer; background: none; border: none; font-size: 20px; color: var(--muted); }
+    .input-group { display: flex; gap: 8px; margin-bottom: 20px; }
+    .input-group input { flex: 1; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel); color: var(--text); }
+    .save-item { 
+      padding: 16px; border: 1px solid var(--border2); border-radius: 8px; 
+      margin-bottom: 12px; background: var(--panel2); cursor: pointer; transition: 0.2s;
+    }
+    .save-item:hover { border-color: var(--gold); }
+    .save-item h4 { margin: 0 0 4px 0; color: var(--gold); }
+    .save-item p { margin: 0; font-size: 0.9em; color: var(--muted); }
+    .loading-text { text-align: center; color: var(--muted); padding: 20px; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero hero-worlds">
+      <div class="hero-copy narrow">
+        <div class="eyebrow">Hành Trình Huyền Thoại</div>
+        <h1>Chọn một thế giới để bắt đầu câu chuyện của bạn</h1>
+        <p>Mỗi nơi mang một bầu không khí riêng. Hãy chọn nơi khiến bạn muốn bước vào nhất.</p>
+      </div>
+      <div class="hero-actions">
+        <button class="btn btn-soft" id="continueBtn">Tiếp tục phiên đang chơi</button>
+        <button class="btn btn-soft" type="button" data-theme-toggle>🌙 Chế độ tối</button>
+        <button class="btn" id="reloadBtn">Tải lại</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="section-head compact">
+        <div>
+          <h2>Thế giới hiện có</h2>
+          <p id="worldStatus">Đang tải...</p>
+        </div>
+      </section>
+      <section id="worldGrid" class="world-grid world-grid-large"></section>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="loadGameModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Tải Game Đã Lưu</h3>
+        <button class="close-btn" id="closeModalBtn">✕</button>
+      </div>
+      <p style="font-size: 0.9em; margin-bottom: 16px;">Nhập tên tài khoản (User ID) của bạn để tìm lại các phiên đang chơi dở.</p>
+      <div class="input-group">
+        <input type="text" id="userIdInput" placeholder="VD: haidang" />
+        <button class="btn" id="fetchSavesBtn">Tìm Save</button>
+      </div>
+      <div id="saveListContainer">
+        </div>
+    </div>
+  </div>
+
+  <script src="./shared.js"></script>
+  <script>
+    const grid = qs('#worldGrid');
+    const statusEl = qs('#worldStatus');
+    
+    // --- KHU VỰC LOGIC CHO CHỌN THẾ GIỚI (GIỮ NGUYÊN) ---
+    qs('#reloadBtn').addEventListener('click', loadWorlds);
+    async function loadWorlds() {
+      statusEl.textContent = 'Đang tải danh sách thế giới...';
+      grid.innerHTML = '';
+      try {
+        const data = await safeFetch('/game/worlds');
+        const worlds = data.worlds || [];
+        statusEl.textContent = `${worlds.length} thế giới sẵn sàng`;
+        grid.innerHTML = worlds.map(w => `
+          <article class="world-card readable-card ${storage.selectedWorld?.world_id === w.world_id ? 'selected' : ''}">
+            <div class="world-cover world-${esc(w.world_id)}"></div>
+            <div class="world-body">
+              <div class="eyebrow small">${esc(w.genre || '')}</div>
+              <h3>${esc(w.name)}</h3>
+              <p class="world-tone">${esc(w.tone || '')}</p>
+              <button class="btn full" data-id="${esc(w.world_id)}">Bước vào thế giới này</button>
+            </div>
+          </article>
+        `).join('');
+
+        qsa('[data-id]').forEach(btn => btn.addEventListener('click', () => {
+          const world = worlds.find(w => w.world_id === btn.dataset.id);
+          if (!world) return;
+          storage.selectedWorld = world;
+          sessionStorage.setItem('selectedWorld', JSON.stringify(world));
+          go('./create-character.html');
+        }));
+      } catch (err) {
+        statusEl.textContent = 'Không tải được thế giới.';
+        grid.innerHTML = `<div class="notice-card">${esc(err.message)}</div>`;
+      }
+    }
+    loadWorlds();
+
+    // --- KHU VỰC LOGIC MỚI: TẢI DANH SÁCH GAME CỦA USER ---
+    const loadGameModal = qs('#loadGameModal');
+    const userIdInput = qs('#userIdInput');
+    const saveListContainer = qs('#saveListContainer');
+
+    // Nút "Tiếp tục" giờ mở popup thay vì kiểm tra LocalStorage mù quáng
+    qs('#continueBtn').addEventListener('click', () => {
+      loadGameModal.style.display = 'flex';
+      // Nếu máy có nhớ tên tài khoản cũ thì tự điền vào luôn
+      if (localStorage.getItem('lastUserId')) {
+        userIdInput.value = localStorage.getItem('lastUserId');
+      }
+    });
+
+    qs('#closeModalBtn').addEventListener('click', () => {
+      loadGameModal.style.display = 'none';
+      saveListContainer.innerHTML = ''; // Dọn dẹp
+    });
+
+    qs('#fetchSavesBtn').addEventListener('click', async () => {
+      const userId = userIdInput.value.trim();
+      if (!userId) {
+        alert("Vui lòng nhập Tên tài khoản!");
+        return;
+      }
+
+      // Nhớ tạm tên tài khoản vào máy để lần sau đỡ phải gõ
+      localStorage.setItem('lastUserId', userId);
+      saveListContainer.innerHTML = '<div class="loading-text">Đang lục tìm trong thư viện...</div>';
+
+      try {
+        // Gọi thẳng xuống cái API "Não bộ" mà chúng ta vừa chế
+        const res = await safeFetch(`/game/sessions/${userId}`);
+        const sessions = res.sessions || [];
+
+        if (sessions.length === 0) {
+          saveListContainer.innerHTML = `<div class="loading-text">Không tìm thấy ván chơi nào cho "${esc(userId)}"</div>`;
+          return;
+        }
+
+        // Vẽ danh sách các cục Save ra màn hình
+        saveListContainer.innerHTML = sessions.map(s => `
+          <div class="save-item" data-session-id="${esc(s.session_id)}">
+            <h4>Nhân vật: ${esc(s.character_name)}</h4>
+            <p>🌍 Thế giới: ${esc(s.world_name)}</p>
+            <p>⏳ Số lượt đã chơi: ${esc(s.turn_count)}</p>
+            <p style="font-size: 0.7em; margin-top: 6px; color: var(--border2)">ID: ${esc(s.session_id.substring(0,8))}...</p>
+          </div>
+        `).join('');
+
+        // Nếu người chơi bấm vào 1 cục Save, nạp Session ID đó và phi thẳng vào game.html
+        qsa('.save-item').forEach(item => {
+          item.addEventListener('click', () => {
+            const sid = item.getAttribute('data-session-id');
+            storage.sessionId = sid; // Lưu vào LocalStorage để game.html dùng chung
+            go('./game.html');
+          });
+        });
+
+      } catch (err) {
+        saveListContainer.innerHTML = `<div class="notice-card" style="color: #ff6b6b">Lỗi: ${esc(err.message)}</div>`;
+      }
+    });
+  </script>
+</body>
+</html>
